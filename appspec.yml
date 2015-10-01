@@ -1,7 +1,7 @@
 version: 0.0
 os: linux
 permissions:
-  - object: /home/build/miau
+  - object: /home/build
     owner: build
     group: build
 files:
