@@ -8,11 +8,15 @@ fail() {
   exit 1
 }
 
+echo "HOME=$HOME"
+echo "PATH=$PATH"
+echo "PWD=$PWD"
+
 echo "Running build" >&2
-cargo build --release   || fail "Tests"
+/usr/local/bin/cargo build --release   || fail "Tests"
 
 echo "Running tests" >&2
-cargo test --release  || fail "Build"
+/usr/local/bin/cargo test --release  || fail "Build"
 
 echo "Build finished, preparing artifacts" >&2
 cp scripts/appspec-staging.yml appspec.yml || fail "Copy appspec"
