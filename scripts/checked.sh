@@ -5,7 +5,7 @@ ROOT=/home/$RUNAS/build/miau
 
 if [ "$(id -u)" = '0' ]; then
   echo "Dropping privileges"
-  sudo -u "$RUNAS" "$@"
+  sudo -u "$RUNAS" -i "$@"
 fi
 
 cd "$ROOT"
