@@ -7,3 +7,7 @@ permissions:
 files:
   - source: .
     destination: /home/ec2-user/build/miau
+hooks:
+  AfterInstall:
+    - location: scripts/checked.sh scripts/build.sh
+      timeout: 300
