@@ -13,10 +13,10 @@ echo "PATH=$PATH"
 echo "PWD=$PWD"
 
 echo "Running build" >&2
-/usr/local/bin/cargo build --release   || fail "Tests"
+/usr/local/bin/cargo build --verbose --release  || fail "Tests"
 
 echo "Running tests" >&2
-/usr/local/bin/cargo test --release  || fail "Build"
+/usr/local/bin/cargo test  --verbose --release  || fail "Build"
 
 echo "Build finished, preparing artifacts" >&2
 cp scripts/appspec-staging.yml appspec.yml || fail "Copy appspec"
