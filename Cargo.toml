@@ -1,0 +1,4 @@
+[package]
+name = "miau"
+version = "0.1.0"
+authors = ["Alex Iadicicco <alex@ajitek.net>"]
