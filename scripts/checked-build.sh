@@ -1,2 +1,2 @@
 #!/bin/sh
-exec scripts/checked.sh scripts/build.sh
+exec scripts/checked.sh "$(dirname "$0")/build.sh"

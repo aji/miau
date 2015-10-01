@@ -2,7 +2,6 @@
 
 RUNAS='ec2-user'
 ROOT=/home/$RUNAS/build/miau
-SCRIPTDIR=$(dirname $(readlink -f "$1"))
 
 if [ "$(id -u)" = '0' ]; then
   echo "Dropping privileges"
@@ -10,4 +9,4 @@ if [ "$(id -u)" = '0' ]; then
 fi
 
 cd "$ROOT"
-exec $SCRIPTDIR"$@" 2>&1 >>build.log
+exec "$@" 2>&1 >>build.log
