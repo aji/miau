@@ -1,5 +1,9 @@
 version: 0.0
 os: linux
+permissions:
+  - object: /home/build/miau
+    owner: build
+    group: build
 files:
   - source: .
     destination: /home/build/miau
