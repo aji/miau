@@ -9,5 +9,5 @@ files:
     destination: /home/ec2-user/build/miau
 hooks:
   AfterInstall:
-    - location: scripts/checked.sh scripts/build.sh
+    - location: scripts/checked-build.sh
       timeout: 300
