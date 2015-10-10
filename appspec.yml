@@ -1,16 +1,43 @@
 version: 0.0
 os: linux
+
 permissions:
-  - object: /home/ec2-user/build
+  - object: /opt/miau
     owner: ec2-user
     group: ec2-user
-  - object: /home/ec2-user/build/scripts
+
+    # CodeDeploy seems to clear permissions to non-executable when extracting
+    # the archive, but even if it does, it's a good idea to make sure we set
+    # the mode on things we want to execute!
+  - object: /opt/miau/bin/miau
+    mode: 755
+  - object: /opt/miau/scripts
     pattern: "*.sh"
     mode: 755
+
 files:
-  - source: .
-    destination: /home/ec2-user/build/miau
+    # individual files
+  - source: target/release/miau
+    destination: /opt/miau/bin/miau
+
+    # whole directories
+  - source: target/doc
+    destination: /opt/www/doc
+  - source: config
+    destination: /opt/miau/config
+  - source: scripts
+    destination: /opt/miau/scripts
+
 hooks:
-  AfterInstall:
-    - location: scripts/checked-build.sh
+  ApplicationStop:
+    - location: scripts/miau-stop.sh
       timeout: 300
+      runas: ec2-user
+  ApplicationStart:
+    - location: scripts/miau-start.sh
+      timeout: 300
+      runas: ec2-user
+  ValidateService:
+    - location: scripts/miau-check.sh
+      timeout: 300
+      runas: ec2-user

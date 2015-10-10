@@ -1,15 +1,15 @@
 language: rust
 sudo: false
 rust:
-- nightly
+  - nightly
 before_script:
-- |
-  pip install 'travis-cargo' --user &&
-  export PATH=$HOME/.local/bin:$PATH
+  - |
+    pip install 'travis-cargo' --user &&
+    export PATH=$HOME/.local/bin:$PATH
 script:
-- |
-  travis-cargo build &&
-  travis-cargo test
+  - |
+    travis-cargo build &&
+    travis-cargo test
 deploy:
   provider: heroku
   api_key:
@@ -17,3 +17,4 @@ deploy:
   app: miau-bot
   on:
     repo: aji/miau
+    branch: master
