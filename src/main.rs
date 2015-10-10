@@ -2,7 +2,14 @@
 //! participants to have their changes deployed to the running instance within
 //! minutes.
 
+#[macro_use]
+extern crate log;
+
+pub mod logging;
+
 /// entry point!
 pub fn main() {
-    println!("Hello, world!");
+    logging::init().unwrap();
+
+    info!("Hello, world!");
 }
