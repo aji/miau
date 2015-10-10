@@ -10,6 +10,7 @@ script:
 - |
   travis-cargo build &&
   travis-cargo test &&
+  travis-cargo doc &&
   travis-cargo doc-upload
 deploy:
   provider: heroku
