@@ -1,12 +1,8 @@
 # *miau*
 
-![build status](http://bob.ajitek.net/r/miau/badge.png)
-![build status](http://bob.ajitek.net/r/miau/badge.png)
-![build status](http://bob.ajitek.net/r/miau/badge.png)
-[repo at bob the builder](http://bob.ajitek.net/r/miau)
-![build status](http://bob.ajitek.net/r/miau/badge.png)
-![build status](http://bob.ajitek.net/r/miau/badge.png)
-![build status](http://bob.ajitek.net/r/miau/badge.png)
+  * [at Travis](https://travis-ci.org/aji/miau)
+  * [at bob the builder](http://bob.ajitek.net/r/miau) (see below)
+  * [documentation](http://bob.ajitek.net/r/miau/doc/miau/index.html)
 
 `miau` is a community IRC bot project with a very hacked-together continuous
 integration pipeline allowing code changes to the `master` branch of the repo
@@ -23,29 +19,21 @@ decide that a wiki of some kind (probably just the GitHub wiki) is sufficient.
 ## The build system
 
 `miau` is a Cargo-based project, providing easy and consistent access to all
-crates on [crates.io](http://crates.io) or public git repositories. The build
-is run in release mode using the nightly Rust toolchain, managed by the
-excellent [multirust](https://github.com/brson/multirust) tool. It's
-recommended that developers use a similar setup for compiling the project,
-as it's both easier to predict what a CI build will look like, as well as
-easier to develop in general.
+crates on [crates.io](http://crates.io) or public git repositories. Builds are
+first handled by Travis, and passing builds are handed off to Heroku to be
+built a second time and ultimately deployed. Because of all the places this can
+fail, work is being done to have notifications delivered to IRC in a timely
+manner.
 
-### Nightly builds
+### bob the builder
 
-Because the Rust ecosystem moves so quickly, and nightly releases are generally
-unstable, `bob` is set up to perform nightly builds of the repository as well.
-If no build has successfully completed in the last 24 hours, `bob` starts a
-build with the most recent successfully built revision. This is intended to
-detect changes to the build environment that would break previously correct
-code.
-
-Note that, with the pipeline configuration described below, complete promotion
-to the production environment can still fail after a successful build. However,
-it's the opinion of this developer that, with the safety guarantees of Rust and
-general aversion of library authors to strange behavioral changes, issues with
-the build should be detected in the majority of cases before leaving the build
-bot. Of course, there is no replacement for good development discipline, and
-bad deployments need to be expected as well.
+`bob` is a rush job that I threw together without thoroughly investigating
+alternatives. Travis seems really good so I'm ok with bending a little to
+support working within it. I will probably strip `bob` down into a more general
+tool for receiving HTTP hooks from dependent services and relaying them to IRC
+channels. `bob` still runs its own builds, it's just only announces failures.
+If `bob` cannot build `miau`, then there's a decent chance that Travis or
+Heroku can't either
 
 ## Configuration
 
@@ -64,42 +52,96 @@ base *and* override configuration, the override collection will be preferred.
 As a result, contributors should be mindful of the ways they fetch data from
 the configuration system and think about the implications of an override.
 
-## The CI pipeline
+## Code style
 
-Currently, the pipeline is structured like this:
+There aren't many hard and fast rules, just try to stick to what you see in the
+surrounding code. The most important rule is that your code be readable, but
+this criteria is differently for everybody, and there's a lot of variation in
+how people will interpret it. Since this is a community project, there are some
+guidelines to ensure that everybody is on the same page:
 
-* The build bot at [bob.ajitek.net](http://bob.ajitek.net/r/miau) picks up
-  changes to the `master` branch of the GitHub repo and kicks off a build.
+  * **DEFINITELY DO:**
+      * **Make sure your code is readable.** What that means will be different
+        to everybody, but code that is clearly hard to follow will be rejected.
+        Don't be afraid to use extra lines or spacing. There's no points for
+        low line count in projects with multiple contributors.
+      * **Indent with 4 spaces, and spaces only.** It's the year 201x, if
+        you're using an editor that makes it hard to do this, then get a
+        better editor. I'm 100% serious. This is going to be pretty strongly
+        enforced across all Rust projects everywhere so it's a good habit to
+        get in anyway.
+      * **Stick to Rust naming conventions.** That means CamelCase for type
+        and trait names, UPPER_SNAKE_CASE for `const` things, and snake_case
+        for just about everything else. The compiler will print warnings if
+        you don't use the conventions. Exceptions to this are allowed if there's
+        a clear gain in readability, but otherwise use names that match the
+        standard.
+      * **Avoid block comments.** That means using line comments, i.e. `//`
+        for normal comments, `///` and `//!` for doc comments. There's not
+        really a reason for this, but mixed commenting styles just look really
+        bad.
+      * **`use` whole modules if possible.** Rust lets you do `use
+        something::far::away` and then refer to things in the module as
+        `away::This` and `away::That`.  If you do want to `use` things from the
+        module, then `use` them explicitly like `use something::{This, That}`
+        instead of globbing them.
 
-* When the build succeeds, the new repo is pushed to a versioned Amazon S3
-  bucket `bob-upload-prod` where Amazon CodePipeline detects a change and
-  starts a deployment with Amazon CodeDeploy.
+  * **DEFINITELY DO NOT:**
+      * **Use tons of glob `use`.** Glob `use` statements (e.g.
+        `use foo::bar::*`) clutter the namespace. This rule really only applies
+        to file-level `use`, (so a `use` at the top of a function that imports
+        all of an `enum`'s variants for use in that function is fine.) Again,
+        what uses of file-level `use` globbing is acceptable is a preferential
+        thing, so have good judgement.
+      * **Use lines longer than 80 characters.** The wider Rust community has
+        settled on 100 lines as a maximum, but 80 this is more of a personal
+        preference. I can't comfortably view files with many lines longer than
+        80 characters, as is the case for a few others, so if you need to go
+        past 80, do so sparingly. If 80 is regularly not enough room, then
+        chances are you have some refactoring to do anyway.
+      * **Use crap names.** Again, this is going to be different to everybody,
+        but certain choices are obviously bad. Just be smart about it.
 
-* That's it!
+Things not on these lists are generally up to your discretion. Again,
+readability is the most important factor, and exceptions can be made to all
+these rules if there is a *clear* benefit to readability. ("It reads better for
+me this way" arguments don't count.)
 
-So right now, `appspec.yml` describes the **production deployment
-configuration**, which is fine at the moment but a little boring.
+## Code organization
 
-### The future
+Some simple guidelines for keeping code well-organized follow. Again, like
+every rule about writing code, exceptions are made if code is clearly more
+understandable that way.
 
-*This part does not actually apply right now!*
+  * Modules are cheap, don't be afraid to use them. Rust lets you re-export
+    things, i.e. `pub use foo::bar::Thing` makes `Thing` a symbol that can be
+    imported from within your module. This is a really great feature to use if
+    you want to split a module's functionality across several submodules and
+    make key entry points easily available to the module's consumers.
 
-Eventually some sort of integration test suite will be developed that will
-verify the bot runs correctly in the staging deployment and, if it does,
-promote it to production for deployment. When that's done, checking in working
-code will trigger the following sequence of events:
+  * Remember to write documentation and tests! Don't worry about being too
+    thorough until you're finishing up, but finished code (i.e. code to be
+    pushed to `master`) should be well-documented and well-tested. The
+    integrity of the CI pipeline relies on good tests, and documentation is a
+    key way of communicating with other developers about your code. The builds
+    run by `bob` include documentation, which developers are expected to keep
+    relevant and helpful.
 
-* GitHub sends a push notification to `bob`, who pulls the change and runs a
-  build. The built assets are uploaded to S3.
+  * Avoid `pub` if it's not needed. Thankfully Rust makes it hard to
+    accidentally make something visible to everybody, but putting `pub` on
+    all members of a `struct`, for example, is just bad practice. If you want
+    users to directly access a `struct`'s members, it's better in the long
+    run to provide immutable and mutable accessors, e.g.
+    `pub fn a_field(&self) -> &Type { &self.a_field }`
 
-* CodePipeline detects the new assets and creates a CodeDeploy deployment to the
-  staging host.
+  * Avoid things that may panic, like `.unwrap()`. If you're not absolutely
+    certain that `.unwrap()` will succeed in all but the most exceptional
+    cases, don't use it. At the very least, add a `TODO` comment.
 
-* The deployment scripts detect we're in the staging environment and run a
-  series of tests.
-
-* The tests pass and the deployment completes successfully. CodePipeline then
-  creates a CodeDeploy deployment to the production host.
-
-* The deployment scripts detect we're in the production environment and flip
-  to the new instance.
+  * Prefer `Result` as a return type for expressing possible failure instead
+    of `Option`. `Result` can be used with the `try!` macro, and from a semantic
+    standpoint represents the result of an operation that can fail, versus
+    `Option` which represents the possible absence of a value. If you define
+    a custom error type for use with `Result`, it can be helpful to define
+    a type alias for `Result` that captures that, i.e.
+    `pub type MyResult<T> = Result<T, MyError>;`
