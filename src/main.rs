@@ -4,6 +4,7 @@
 
 #[macro_use]
 extern crate log;
+extern crate mio;
 extern crate toml;
 
 pub mod environment;
@@ -19,9 +20,7 @@ pub fn main() {
         },
     };
 
-    logging::init().unwrap();
+    logging::init(&env).unwrap();
 
     info!("initialized!");
-    info!("host: {:?}", env.conf_str("irc.host"));
-    info!("port: {:?}", env.conf_integer("irc.port"));
 }
