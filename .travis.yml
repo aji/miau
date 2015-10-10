@@ -1,0 +1,20 @@
+language: rust
+sudo: required
+rust:
+- nightly
+- beta
+before_script:
+- |
+  pip install 'travis-cargo' --user &&
+  export PATH=$HOME/.local/bin:$PATH
+script:
+- |
+  travis-cargo build &&
+  travis-cargo test
+deploy:
+  provider: heroku
+  api_key:
+    secure: p+v2NmLB2aV/5++94fc9Rxoj5mUKS1JwZPpx3EjeGuOASlUgY12DgVnZyoepoxLQk/5OpmZGCdWEhbnlz8+gQpDTDuBeW2RkgyPXN2pd7W8SabKJHouk4TKP4ZM2FoXi5eR2oLdrmZ0fiYuCazrhtMk4EG3QhA2PocBWGuK9QkIaD1lsRmIUSAE9UdqOkUVZkmsJlS4zXMtkPGOIRuEO5cT4W2itoK1mOrymIqmn5G2YQdMdaLOFEsroCyPHSpbx3A12ReB+nb0Sea0AW3a1/SUq4RZW+Nkh4Y/kfqM20GV1KsXuSivTRSzT3np+8dsJgIreBbkycKDrJjVdMANju5rDqMqYgFq4yogy9wP5/bSWfPvSZQrJShcfeiY3kafEr8nl7Z97YsCrPJMd3S1gtPeQNepgSbt82g0/kGbl07054I/htlt0D3rFS5F7K9gzwPqNcf9iESwRlJAzeP9/fUsYUODCfqqwWxg+w5+DoV50fzq2c+t4rjARch+CzcCERBc7WudRB5kN/ACdt9l+jdPUL430IvN1RXykvd9dH+FfB8FBpDdb4HZWzU6Yy4y/AqbY1fr6kpG2c/BLose8OtBt65VUDrDLuiPZXsAkD/xILs/rOWLOKXSFEDSfJZyOFm79XJ8cZht1AmQIuIuCGvf4RmTsdJVFYwqqz7MJdYA=
+  app: miau-bot
+  on:
+    repo: aji/miau

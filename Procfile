@@ -1,0 +1,1 @@
+miau: ./target/release/miau
