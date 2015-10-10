@@ -143,9 +143,9 @@ fn read_toml(path: String) -> Result<toml::Value, Error> {
 /// Loads the bot's environment.
 ///
 /// This checks two environment variables to determine the paths to load
-/// configuration files from, MIAU_CONFIG and MIAU_OVERLAY, corresponding to
-/// the base and overlay configuration files respectively. The files are
-/// parsed as TOML.
+/// configuration files from, `MIAU_CONFIG` and `MIAU_OVERLAY`, corresponding to
+/// the base and overlay configuration files respectively. The files are parsed
+/// as TOML.
 pub fn load() -> Result<Env, Error> {
     let config = match env::var(CONFIG_ENV) {
         Ok(conf)  => conf,

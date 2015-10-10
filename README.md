@@ -18,6 +18,51 @@ To keep the project somewhat coherent, a focus on documentation availability is
 key. For now high-level documentation is going in the `README.md`, until we
 decide that a wiki of some kind (probably just the GitHub wiki) is sufficient.
 
+## Development workflow
+
+First, you should copy `config/miau-dev.toml.demo` to `config/miau-dev.toml`.
+By default, the bot looks for an override file at `config/miau-dev.toml`. This
+is to prevent people from accidentally using the production configuration when
+running the bot. Since `config/miau-dev.toml` is in `.gitignore`, you can make
+changes to it without worrying about accidentally committing them.
+
+To compile and run the bot with the development configuration, run something
+like the following:
+
+    $ cargo build
+    $ target/debug/miau
+
+`miau` looks for the name of the configuration overlay in the `MIAU_OVERLAY`
+environment variable. For example, to run the bot with the demo development
+overlay,
+
+    $ MIAU_OVERLAY=config/miau-dev.toml.demo target/debug/miau
+
+or
+
+    $ export MIAU_OVERLAY=config/miau-dev.toml.demo
+    $ target/debug/miau
+
+If you specifically want to use the production configuration, you can specify
+`config/miau-prod.toml` or `/dev/null` as the value of `MIAU_OVERLAY`. If you
+want to test a different base configuration file, `miau` looks in `MIAU_CONFIG`
+for the path. This defaults to `config/miau-prod.toml`, but no warning is
+printed when using the default.
+
+It's recommended to install `multirust`, `travis-cargo`, and the Heroku
+Toolbelt for the most accurate testing setup. Thankfully, this is usually only
+necessary when testing changes to the Travis and Heroku integration, but it can
+be useful to verify that a set of changes will correctly build and run in
+production. To build:
+
+    $ multirust default nightly
+    $ travis-cargo
+
+To run,
+
+    $ cargo build --release
+    $ MIAU_OVERLAY=my-overlay.toml heroku local
+
 ## The build system
 
 `miau` is a Cargo-based project, providing easy and consistent access to all

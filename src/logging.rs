@@ -1,4 +1,4 @@
-//! Logger implementation
+//! Basic logger implementation that prints to standard output.
 
 extern crate log;
 
@@ -22,6 +22,8 @@ impl log::Log for DumbLogger {
     }
 }
 
+/// Configures the logging system with the configuration for the current
+/// environment.
 pub fn init(env: &Env) -> Result<(), log::SetLoggerError> {
     use log::LogLevelFilter::*;
 
