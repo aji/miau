@@ -1,0 +1,4 @@
+[irc]
+host = "irc.canternet.org"
+port = 6667
+channels = [ "#miau-dev" ]

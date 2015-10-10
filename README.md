@@ -41,16 +41,16 @@ To support development, staging, and production instances, a simple tiered
 configuration system is used. The base configuration lives in
 `config/miau-prod.toml`. As the name implies, this is also the production
 configuration. Changes to this file should be treated with care. To support
-alternate setups, an override file can be specified whose settings supersede
+alternate setups, an overlay file can be specified whose settings supersede
 the base configuration. When looking up a setting, the configuration system
-first checks the override, falling back to the base configuration if no
+first checks the overlay, falling back to the base configuration if no
 setting was found.
 
 This gets a bit tricky when dealing with collections of settings, such as a
 list and tables. In the situtation where a collection is present in both the
-base *and* override configuration, the override collection will be preferred.
+base *and* overlay configuration, the overlay collection will be preferred.
 As a result, contributors should be mindful of the ways they fetch data from
-the configuration system and think about the implications of an override.
+the configuration system and think about the implications of an overlay.
 
 ## Code style
 

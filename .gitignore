@@ -1,1 +1,4 @@
+config/miau-dev.toml
 target
+*.swp
+*~
