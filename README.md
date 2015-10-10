@@ -31,9 +31,9 @@ manner.
 alternatives. Travis seems really good so I'm ok with bending a little to
 support working within it. I will probably strip `bob` down into a more general
 tool for receiving HTTP hooks from dependent services and relaying them to IRC
-channels. `bob` still runs its own builds, it's just only announces failures.
+channels. `bob` still runs its own builds, but will only announces failures.
 If `bob` cannot build `miau`, then there's a decent chance that Travis or
-Heroku can't either
+Heroku can't either.
 
 ## Configuration
 
