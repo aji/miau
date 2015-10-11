@@ -59,7 +59,7 @@ impl<'a> Bot<'a> {
 
         match msg.verb {
             b"001" => {
-                sock.write_fmt(format_args!("JOIN #miau-dev-aji\r\n")).unwrap();
+                sock.write_fmt(format_args!("JOIN #miau-dev\r\n")).unwrap();
             },
             b"PING" => {
                 sock.write_fmt(format_args!("PONG :{}\r\n",
