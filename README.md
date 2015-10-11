@@ -2,9 +2,7 @@
 
   * [at Travis](https://travis-ci.org/aji/miau)
     ![travis badge](https://travis-ci.org/aji/miau.svg?branch=master)
-  * [at bob the builder](http://bob.ajitek.net/r/miau)
-    ![bob badge](http://bob.ajitek.net/r/miau/badge.png) (see below)
-  * [documentation](http://bob.ajitek.net/r/miau/doc/miau/index.html)
+  * [documentation](http://aji.github.io/miau)
 
 `miau` is a community IRC bot project with a very hacked-together continuous
 integration pipeline allowing code changes to the `master` branch of the repo
@@ -71,17 +69,6 @@ first handled by Travis, and passing builds are handed off to Heroku to be
 built a second time and ultimately deployed. Because of all the places this can
 fail, work is being done to have notifications delivered to IRC in a timely
 manner.
-
-### bob the builder
-
-`bob` is a rush job that I threw together without thoroughly investigating
-alternatives, but it hosts our documentation which is nice. Travis seems really
-good for everything else so I'm ok with bending a little to support working
-within it. I will probably strip `bob` down into a more general tool for
-receiving HTTP hooks from dependent services and relaying them to IRC channels.
-`bob` still runs its own builds, but will only announces failures.  If `bob`
-cannot build `miau`, then there's a decent chance that Travis or Heroku can't
-either.
 
 ## Configuration
 
@@ -172,8 +159,8 @@ understandable that way.
     pushed to `master`) should be well-documented and well-tested. The
     integrity of the CI pipeline relies on good tests, and documentation is a
     key way of communicating with other developers about your code. The builds
-    run by `bob` include documentation, which developers are expected to keep
-    relevant and helpful.
+    include documentation, which developers are expected to keep relevant and
+    helpful.
 
   * Avoid `pub` if it's not needed. Thankfully Rust makes it hard to
     accidentally make something visible to everybody, but putting `pub` on
