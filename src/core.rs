@@ -1,5 +1,8 @@
 //! The main bot entry point.
 
+// This file is terrible and extremely in flux. Please don't rely on anything
+// in it remaining the same in the short future!
+
 use mio;
 use std::io;
 use std::io::prelude::*;
@@ -12,6 +15,7 @@ use irc;
 pub struct Bot<'a> {
     env: &'a Env,
     line: Vec<u8>,
+    registered: bool,
 }
 
 impl<'a> Bot<'a> {
@@ -19,6 +23,7 @@ impl<'a> Bot<'a> {
         Ok(Bot {
             env: env,
             line: Vec::new(),
+            registered: false,
         })
     }
 
@@ -32,7 +37,7 @@ impl<'a> Bot<'a> {
         Ok(())
     }
 
-    fn on_line(&mut self) {
+    fn on_line(&mut self, sock: &mut mio::tcp::TcpStream) {
         debug!(" -> {}", String::from_utf8_lossy(&self.line[..]));
 
         let msg = match irc::Message::parse(&self.line[..]) {
@@ -44,18 +49,36 @@ impl<'a> Bot<'a> {
         };
 
         trace!("parsed output: {:?}", msg);
+
+        if !self.registered {
+            let nick = self.env.conf_str("irc.nick").unwrap_or("miau");
+            sock.write_fmt(format_args!("NICK {}\r\n", nick)).unwrap();
+            sock.write_fmt(format_args!("USER a a a a\r\n")).unwrap();
+            self.registered = true;
+        }
+
+        match msg.verb {
+            b"001" => {
+                sock.write_fmt(format_args!("JOIN #miau-dev-aji\r\n")).unwrap();
+            },
+            b"PING" => {
+                sock.write_fmt(format_args!("PONG :{}\r\n",
+                    String::from_utf8_lossy(msg.args[0]))).unwrap();
+            },
+            _ => { }
+        }
     }
 
     fn on_end_of_data(&mut self) {
         trace!("end of stream");
     }
 
-    fn on_incoming_data(&mut self, data: &[u8]) {
+    fn on_incoming_data(&mut self, data: &[u8], sock: &mut mio::tcp::TcpStream) {
         trace!("{} bytes incoming", data.len());
         for byte in data {
             match *byte {
                 b'\r' => { },
-                b'\n' => { self.on_line(); self.line.clear(); }
+                b'\n' => { self.on_line(sock); self.line.clear(); }
                 _     => { self.line.push(*byte); }
             }
         }
@@ -142,6 +165,10 @@ impl<'a> BotHandler<'a> {
         debug!("successful connection!");
         Ok(())
     }
+
+    fn sock(&mut self) -> Option<&mut mio::tcp::TcpStream> {
+        self.conn.as_mut()
+    }
 }
 
 impl<'a> mio::Handler for BotHandler<'a> {
@@ -174,7 +201,7 @@ impl<'a> mio::Handler for BotHandler<'a> {
             match conn.read(&mut buf[..]) {
                 Ok(0) => self.bot.on_end_of_data(),
                 Ok(size) => {
-                    self.bot.on_incoming_data(&buf[..size]);
+                    self.bot.on_incoming_data(&buf[..size], conn);
                     stop = false;
                 },
                 Err(e) => error!("error when reading: {}", e),

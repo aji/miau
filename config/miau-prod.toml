@@ -2,6 +2,7 @@
 level = "info"
 
 [irc]
+nick = "miau"
 host = "irc.canternet.org"
 port = 6667
 channels = [ "#miau-dev" ]

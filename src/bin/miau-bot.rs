@@ -35,8 +35,8 @@ fn main() {
         Ok(_) => {
             info!("bot finished. bye!");
         },
-        Err(_) => {
-            error!("an error occurred when running the bot");
+        Err(e) => {
+            error!("an error occurred: {}", e);
             process::exit(1)
         },
     }
