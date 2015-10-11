@@ -11,3 +11,4 @@ pub mod core;
 pub mod environment;
 pub mod irc;
 pub mod logging;
+pub mod net;
