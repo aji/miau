@@ -1,7 +1,7 @@
 # add your development overrides here
 
 [log]
-level = "trace"
+level = "debug"
 
 [irc]
 host = "127.0.0.1"

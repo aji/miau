@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Alex Iadicicco <alex@ajitek.net>"]
 
 [dependencies]
+log = "*"
 mio = "*"
 toml = "*"
-log = "*"
 
 [features]
 unstable = []  # for travis-cargo

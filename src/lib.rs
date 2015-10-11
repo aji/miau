@@ -7,5 +7,7 @@ extern crate log;
 extern crate mio;
 extern crate toml;
 
+pub mod core;
 pub mod environment;
+pub mod irc;
 pub mod logging;
