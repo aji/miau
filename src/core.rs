@@ -6,6 +6,7 @@
 use mio;
 use std::io;
 use std::io::prelude::*;
+use toml;
 
 use environment::Env;
 use irc;
@@ -68,16 +69,22 @@ impl<'a> Bot<'a> {
 
         trace!("parsed output: {:?}", msg);
 
-        if !self.registered {
-            let nick = self.env.conf_str("irc.nick").unwrap_or("miau");
-            sock.write_fmt(format_args!("NICK {}\r\n", nick)).unwrap();
-            sock.write_fmt(format_args!("USER a a a a\r\n")).unwrap();
-            self.registered = true;
-        }
-
         match msg.verb {
             b"001" => {
-                sock.write_fmt(format_args!("JOIN #miau-dev\r\n")).unwrap();
+                let dfl = [toml::Value::String("#miau-dev".to_owned())];
+                let chans = self
+                    .env.conf_slice("irc.channels")
+                    .unwrap_or(&dfl[..]);
+                for chan in chans {
+                    let c = match chan {
+                        &toml::Value::String(ref c) => c,
+                        _ => {
+                            warn!("{} is not a string! skipping", chan);
+                            continue;
+                        }
+                    };
+                    sock.write_fmt(format_args!("JOIN {}\r\n", c)).unwrap();
+                }
             },
             b"PING" => {
                 sock.write_fmt(format_args!("PONG :{}\r\n",
@@ -89,11 +96,20 @@ impl<'a> Bot<'a> {
 }
 
 impl<'a> net::NetDelegate for Bot<'a> {
-    fn on_end_of_data(&mut self, ctx: &mut net::NetContext) {
+    fn on_end_of_data(
+        &mut self,
+        evt: &mut mio::EventLoop<net::NetHandler<Self>>,
+        ctx: &mut net::NetContext
+    ) {
         trace!("end of stream");
     }
 
-    fn on_incoming_data(&mut self, ctx: &mut net::NetContext, data: &[u8]) {
+    fn on_incoming_data(
+        &mut self,
+        evt: &mut mio::EventLoop<net::NetHandler<Self>>,
+        ctx: &mut net::NetContext,
+        data: &[u8]
+    ) {
         trace!("{} bytes incoming", data.len());
         for byte in data {
             match *byte {
@@ -102,5 +118,25 @@ impl<'a> net::NetDelegate for Bot<'a> {
                 _     => { self.line.push(*byte); }
             }
         }
+    }
+
+    fn on_writable(
+        &mut self,
+        evt: &mut mio::EventLoop<net::NetHandler<Self>>,
+        ctx: &mut net::NetContext
+    ) {
+        if self.registered {
+            return;
+        }
+
+        debug!("became writable. registering");
+
+        let nick = self.env.conf_str("irc.nick").unwrap_or("miau");
+        ctx.sock().write_fmt(format_args!("NICK {}\r\n", nick)).unwrap();
+        ctx.sock().write_fmt(format_args!("USER a a a a\r\n")).unwrap();
+
+        self.registered = true;
+
+        ctx.reregister_read_only(evt);
     }
 }

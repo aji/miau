@@ -10,9 +10,24 @@ const CONN_TOKEN: usize = 6;
 const READ_BUF_SIZE: usize = 4096;
 
 pub trait NetDelegate: Sized {
-    fn on_end_of_data(&mut self, ctx: &mut NetContext);
+    fn on_end_of_data(
+        &mut self,
+        evt: &mut mio::EventLoop<NetHandler<Self>>,
+        ctx: &mut NetContext,
+    );
 
-    fn on_incoming_data(&mut self, ctx: &mut NetContext, data: &[u8]);
+    fn on_incoming_data(
+        &mut self,
+        evt: &mut mio::EventLoop<NetHandler<Self>>,
+        ctx: &mut NetContext,
+        data: &[u8],
+    );
+
+    fn on_writable(
+        &mut self,
+        evt: &mut mio::EventLoop<NetHandler<Self>>,
+        ctx: &mut NetContext,
+    );
 }
 
 pub struct NetContext<'a> {
@@ -22,6 +37,19 @@ pub struct NetContext<'a> {
 impl<'a> NetContext<'a> {
     pub fn sock(&mut self) -> &mut mio::tcp::TcpStream {
         self.sock
+    }
+
+    pub fn reregister_read_only<H: mio::Handler>(
+        &mut self,
+        evt: &mut mio::EventLoop<H>,
+    ) {
+        evt.reregister(
+            self.sock, mio::Token(CONN_TOKEN),
+            mio::EventSet::readable() |
+            mio::EventSet::error() |
+            mio::EventSet::hup(),
+            mio::PollOpt::edge()
+        ).unwrap();
     }
 }
 
@@ -71,6 +99,7 @@ impl<'a, D> NetHandler<'a, D> where D: NetDelegate {
             try!(evt.register_opt(
                 &connref.conn, token,
                 mio::EventSet::readable() |
+                mio::EventSet::writable() |
                 mio::EventSet::error() |
                 mio::EventSet::hup(),
                 mio::PollOpt::edge()
@@ -91,7 +120,7 @@ impl<'a, D> mio::Handler for NetHandler<'a, D> where D: NetDelegate {
         &mut self,
         evt: &mut mio::EventLoop<Self>,
         tok: mio::Token,
-        _events: mio::EventSet
+        events: mio::EventSet
     ) {
         let mut buf: [u8; READ_BUF_SIZE] = unsafe { mem::uninitialized() };
 
@@ -108,27 +137,33 @@ impl<'a, D> mio::Handler for NetHandler<'a, D> where D: NetDelegate {
             },
         };
 
-        let read = conn.read(&mut buf[..]);
-
         let mut ctx = NetContext { sock: conn };
 
-        let stop = match read {
-            Ok(0) => {
-                self.delegate.on_end_of_data(&mut ctx);
-                true
-            },
-            Ok(size) => {
-                self.delegate.on_incoming_data(&mut ctx, &buf[..size]);
-                false
-            },
-            Err(e) => {
-                error!("error when reading: {}", e);
-                true
-            },
-        };
+        if events.is_readable() {
+            let read = ctx.sock().read(&mut buf[..]);
 
-        if stop {
-            evt.shutdown();
+            let stop = match read {
+                Ok(0) => {
+                    self.delegate.on_end_of_data(evt, &mut ctx);
+                    true
+                },
+                Ok(size) => {
+                    self.delegate.on_incoming_data(evt, &mut ctx, &buf[..size]);
+                    false
+                },
+                Err(e) => {
+                    error!("error when reading: {}", e);
+                    true
+                },
+            };
+
+            if stop {
+                evt.shutdown();
+            }
+        }
+
+        if events.is_writable() {
+            self.delegate.on_writable(evt, &mut ctx);
         }
     }
 }
