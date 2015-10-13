@@ -9,6 +9,8 @@ extern crate log;
 extern crate miau;
 
 use std::process;
+use std::thread;
+use std::time;
 
 use miau::*;
 
@@ -30,6 +32,9 @@ fn main() {
             process::exit(1)
         },
     };
+
+    info!("sleeping for 30 seconds before attempting connection");
+    thread::sleep(time::Duration::new(30, 0));
 
     match bot.run() {
         Ok(_) => {
