@@ -1,8 +1,7 @@
 # *miau*
 
   * [at Travis](https://travis-ci.org/aji/miau)
-    * ![staging badge](https://travis-ci.org/aji/miau.svg?branch=staging) staging
-    * ![master badge](https://travis-ci.org/aji/miau.svg?branch=master) master
+    * ![travis badge](https://travis-ci.org/aji/miau.svg?branch=master) `master`
   * [documentation](http://aji.github.io/miau)
 
 `miau` is a community IRC bot project with a very hacked-together continuous
@@ -16,11 +15,6 @@ Contact the maintainers at `irc.canternet.org #miau-dev`
 To keep the project somewhat coherent, a focus on documentation availability is
 key. For now high-level documentation is going in the `README.md`, until we
 decide that a wiki of some kind (probably just the GitHub wiki) is sufficient.
-
-## Using `git`
-
-`staging` is the main development branch. Changes can only be merged into
-`master` when they have successfully been built on `staging`.
 
 ## Development workflow
 
