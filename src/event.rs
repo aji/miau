@@ -19,9 +19,13 @@ use std::net::ToSocketAddrs;
 
 const RECV_BUF_SIZE: usize = 2048;
 
+/// A unique identifier for an event handler
 pub type HandlerName = usize;
+/// A unique identifier for an event-sensitive item
 pub type EventedName = usize;
 
+/// The main event handling loop. There will be exactly one of these for every
+/// instance of the program.
 pub struct Reactor<'h> {
     next_handler: HandlerName,
     next_evented: EventedName,
@@ -30,12 +34,15 @@ pub struct Reactor<'h> {
     eventeds: HashMap<EventedName, Box<Evented>>,
 }
 
+/// A struct passed around to control the `Reactor` from within handlers.
 pub struct ReactorCtl<'a> {
     next_evented: &'a mut EventedName,
     new_eventeds: Vec<(EventedName, HandlerName, Box<Evented>)>,
     queued_sends: Vec<(EventedName, Vec<u8>)>,
 }
 
+/// A trait implemented by anything that integrates with the `Reactor` and is
+/// event-sensitive.
 pub trait Evented {
     fn register<'h>(
         &self,
@@ -64,27 +71,39 @@ pub trait Evented {
     );
 }
 
+/// A trait implemented on things passed into event handlers to control the
+/// `Evented` from which they originated.
 pub trait EventedCtl<'a> {
+    /// Fetches the name of the `Evented` this event is for
     fn name(&self) -> EventedName;
+    /// Fetches the `ReactorCtl` instance controlling this event
     fn reactor(&mut self) -> &mut ReactorCtl<'a>;
 
+    /// Queues some data to be sent on this `Evented`
     fn queue_send(&mut self, data: &[u8]);
 
+    /// Requests the `Evented` stop receiving data.
     fn stop_recv(&mut self);
+    /// Requests the `Evented` stop sending data.
     fn stop_send(&mut self);
 }
 
+/// A trait implemented by things that can handle events from `Evented`
 pub trait Handler {
+    /// Called when the input has ended.
     fn on_end_of_input<'a>(&mut self, ev: &mut EventedCtl<'a>);
+    /// Called to deliver data from the `Evented` to the `Handler`
     fn on_incoming_data<'a>(&mut self, ev: &mut EventedCtl<'a>, data: &[u8]);
 }
 
+/// A wrapper around a `mio::tcp::TcpStream` with an output buffer
 pub struct EventedSocket {
     sock: mio::tcp::TcpStream,
     outbuf: Vec<u8>,
 }
 
 impl<'h> Reactor<'h> {
+    /// Creates a new `Reactor`
     pub fn new() -> Reactor<'h> {
         // the 'nexts' could be anything, but I like 4
         Reactor {
@@ -117,6 +136,7 @@ impl<'h> Reactor<'h> {
         nm
     }
 
+    /// Adds the `Handler` to this `Reactor` and returns its identifier
     pub fn add_handler(&mut self, s: &'h mut Handler) -> HandlerName {
         let name = self.next_handler;
         self.next_handler += 1;
@@ -134,18 +154,21 @@ impl<'h> Reactor<'h> {
         nm
     }
 
+    /// Adds the `Evented` to this `Reactor` and returns its identifier
     pub fn add_evented(&mut self, hn: HandlerName, s: Box<Evented>) -> EventedName {
         let name = self.next_evented;
         self.next_evented += 1;
         self.add_evented_raw(name, hn, s)
     }
 
+    /// Runs the `Reactor`
     pub fn run(&mut self) {
         let mut event_loop = mio::EventLoop::new().unwrap();
         self.register_everything(&mut event_loop);
         event_loop.run(self).unwrap();
     }
 
+    /// A handy way to create a connection to some remote host
     pub fn connect<A: ToSocketAddrs>(
         &mut self,
         addr: A,
@@ -177,6 +200,7 @@ impl<'h> Reactor<'h> {
         Ok(self.add_evented(hn, Box::new(evented)))
     }
 
+    /// Queues data to be sent on the particular `Evented`
     pub fn queue_send(&mut self, nm: EventedName, data: &[u8]) {
         match self.eventeds.get_mut(&nm) {
             Some(e) => { e.queue_send(data); },
@@ -252,6 +276,7 @@ impl<'h> mio::Handler for Reactor<'h> {
 }
 
 impl<'a> ReactorCtl<'a> {
+    /// Request the `Evented` be added before the next iteration of the event loop
     pub fn add_evented(&mut self, hn: HandlerName, s: Box<Evented>) -> EventedName {
         let name = *self.next_evented;
         *self.next_evented += 1;
@@ -259,16 +284,19 @@ impl<'a> ReactorCtl<'a> {
         name
     }
 
+    /// Requests the entire event loop be stopped as soon as possible
     pub fn stop_everything(&mut self) {
         unimplemented!();
     }
 
+    /// Queues some data to be sent on the named `Evented`
     pub fn queue_send(&mut self, eid: EventedName, data: &[u8]) {
         self.queued_sends.push((eid, data.to_owned()));
     }
 }
 
 impl EventedSocket {
+    /// Wraps a `mio::tcp::TcpStream` as an `EventedSocket`
     pub fn new(sock: mio::tcp::TcpStream) -> EventedSocket {
         EventedSocket {
             sock: sock,
