@@ -19,8 +19,8 @@ decide that a wiki of some kind (probably just the GitHub wiki) is sufficient.
 
 ## Using `git`
 
-`staging` is the main development branch. Changes will periodically be merged
-into `master` from `staging`.
+`staging` is the main development branch. Changes can only be merged into
+`master` when they have successfully been built on `staging`.
 
 ## Development workflow
 
