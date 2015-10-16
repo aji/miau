@@ -9,6 +9,6 @@ extern crate toml;
 
 pub mod core;
 pub mod environment;
+pub mod event;
 pub mod irc;
 pub mod logging;
-pub mod net;

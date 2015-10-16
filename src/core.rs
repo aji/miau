@@ -3,19 +3,16 @@
 // This file is terrible and extremely in flux. Please don't rely on anything
 // in it remaining the same in the short future!
 
-use mio;
 use std::io;
-use std::io::prelude::*;
 use toml;
 
 use environment::Env;
+use event;
 use irc;
-use net;
 
 pub struct Bot<'a> {
     env: &'a Env,
     line: Vec<u8>,
-    registered: bool,
 }
 
 impl<'a> Bot<'a> {
@@ -23,14 +20,10 @@ impl<'a> Bot<'a> {
         Ok(Bot {
             env: env,
             line: Vec::new(),
-            registered: false,
         })
     }
 
-    pub fn run(&'a mut self) -> io::Result<()> {
-        let mut evt = try!(mio::EventLoop::new());
-        let mut hdl = try!(net::NetHandler::new(self));
-
+    pub fn run(&mut self) -> io::Result<()> {
         let host = match self.env.conf_str("irc.host") {
             Some(host) => host,
             None => {
@@ -50,13 +43,22 @@ impl<'a> Bot<'a> {
         };
 
         debug!("starting connection to {}:{}", host, port);
-        try!(hdl.connect(&mut evt, (host, port)));
-        try!(evt.run(&mut hdl));
+
+        let mut reactor = event::Reactor::new();
+        let me = reactor.add_handler(self);
+        let conn = try!(reactor.connect((host, port), me));
+        let nick = self.env.conf_str("irc.nick").unwrap_or("miau");
+        reactor.queue_send(conn, b"NICK ");
+        reactor.queue_send(conn, nick.as_bytes());
+        reactor.queue_send(conn, b"\r\n");
+        reactor.queue_send(conn, b"USER a a a a\r\n");
+
+        reactor.run();
 
         Ok(())
     }
 
-    fn on_line(&mut self, sock: &mut mio::tcp::TcpStream) {
+    fn on_line<'b>(&mut self, ev: &mut event::EventedCtl<'b>) {
         debug!(" -> {}", String::from_utf8_lossy(&self.line[..]));
 
         let msg = match irc::Message::parse(&self.line[..]) {
@@ -83,60 +85,41 @@ impl<'a> Bot<'a> {
                             continue;
                         }
                     };
-                    sock.write_fmt(format_args!("JOIN {}\r\n", c)).unwrap();
+                    ev.queue_send(b"JOIN ");
+                    ev.queue_send(c.as_bytes());
+                    ev.queue_send(b"\r\n");
                 }
             },
             b"PING" => {
-                sock.write_fmt(format_args!("PONG :{}\r\n",
-                    String::from_utf8_lossy(msg.args[0]))).unwrap();
+                ev.queue_send(b"PONG :");
+                ev.queue_send(msg.args[0]);
+                ev.queue_send(b"\r\n");
             },
             _ => { }
         }
     }
 }
 
-impl<'a> net::NetDelegate for Bot<'a> {
-    fn on_end_of_data(
+impl<'a> event::Handler for Bot<'a> {
+    fn on_end_of_input<'b>(
         &mut self,
-        evt: &mut mio::EventLoop<net::NetHandler<Self>>,
-        ctx: &mut net::NetContext
+        _ev: &mut event::EventedCtl<'b>,
     ) {
         trace!("end of stream");
     }
 
-    fn on_incoming_data(
+    fn on_incoming_data<'b>(
         &mut self,
-        evt: &mut mio::EventLoop<net::NetHandler<Self>>,
-        ctx: &mut net::NetContext,
+        ev: &mut event::EventedCtl<'b>,
         data: &[u8]
     ) {
         trace!("{} bytes incoming", data.len());
         for byte in data {
             match *byte {
                 b'\r' => { },
-                b'\n' => { self.on_line(ctx.sock()); self.line.clear(); }
+                b'\n' => { self.on_line(ev); self.line.clear(); }
                 _     => { self.line.push(*byte); }
             }
         }
-    }
-
-    fn on_writable(
-        &mut self,
-        evt: &mut mio::EventLoop<net::NetHandler<Self>>,
-        ctx: &mut net::NetContext
-    ) {
-        if self.registered {
-            return;
-        }
-
-        debug!("became writable. registering");
-
-        let nick = self.env.conf_str("irc.nick").unwrap_or("miau");
-        ctx.sock().write_fmt(format_args!("NICK {}\r\n", nick)).unwrap();
-        ctx.sock().write_fmt(format_args!("USER a a a a\r\n")).unwrap();
-
-        self.registered = true;
-
-        ctx.reregister_read_only(evt);
     }
 }

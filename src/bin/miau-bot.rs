@@ -33,8 +33,9 @@ fn main() {
         },
     };
 
-    info!("sleeping for 30 seconds before attempting connection");
-    thread::sleep(time::Duration::new(30, 0));
+    let wait = env.conf_integer("bot.start_delay").unwrap_or(30) as u64;
+    info!("sleeping for {} seconds before attempting connection", wait);
+    thread::sleep(time::Duration::new(wait, 0));
 
     match bot.run() {
         Ok(_) => {
