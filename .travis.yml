@@ -1,15 +1,17 @@
 language: rust
 sudo: false
 rust:
-  - nightly
+- nightly
 before_script:
-  - |
-    pip install 'travis-cargo' --user &&
-    export PATH=$HOME/.local/bin:$PATH
+- |
+  pip install 'travis-cargo' --user &&
+  export PATH=$HOME/.local/bin:$PATH
 script:
-  - |
-    travis-cargo build &&
-    travis-cargo test
+- |
+  travis-cargo build &&
+  travis-cargo test &&
+  travis-cargo doc &&
+  travis-cargo doc-upload
 deploy:
   provider: heroku
   api_key:
@@ -18,3 +20,6 @@ deploy:
   on:
     repo: aji/miau
     branch: master
+env:
+  global:
+    secure: HSr6D2Am9ldqg4lQj527vb/tjVxiaXY9fx4i8tooDQPp3BLhCIhqFBNUA8vcb811bVXPw/UZyO3RVRXvhjwYPZRIC8+tJTY7+g2a/TKXRNUbrtoWLyxFZjKtQpi1CRCB8I+052AVp4Dd0ebOvpSEGBOb60icvNPtmYFfa119mLVTAowOQgbkwJ5hHrceOBT6Z+iuVzTVMAZLq3x323B7Ip0+z8W+Yk3jSU3OmhnRyZiNQal1Hlv0EG8fPfjsLgNxtgZ3fxhkdjQbrrbqQU7ycUijzlKpET+Y+VOEnA4nXopsFVPiOPHPTfmBCcAPCyOLFbQrk5OKVMU1WwM8u+cH7gRqAAU3k/1xs97q5RPZpusPj72N4rxagyeCFAzGca2A/YQd5pGQLVZiYqRu4wxYtWF8EBN2LfFdmbubP31RNvVKJKjp7y55gavnmhCktcs3GK8OzO53NaH88nlJRvMGGSd7psDhc7X7ACnqTO/bm6ItLgKfNYpO+80SYE0t+w2wIM5NZEJxRYk7Mft8dyrFiTpS71eyfbhBcBELWN71JcD/tdgpAtuYYv9MKKQoYPCaqaCoqgWPJJaXXb0T0hRkMX20HohGXuD8GfeIS8bddvsw9vHemIq9/HtQq2D1BJUVUk54LiGIroEdGwrmfiIFbgJMKXix4rSpytYht4sBIjQ=

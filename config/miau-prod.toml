@@ -1,0 +1,11 @@
+[log]
+level = "info"
+
+[bot]
+start_delay = 30
+
+[irc]
+nick = "miau"
+host = "irc.canternet.org"
+port = 6667
+channels = [ "#miau-dev" ]

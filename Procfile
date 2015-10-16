@@ -1,1 +1,1 @@
-miau: ./target/release/miau
+miau: ./target/release/miau-bot

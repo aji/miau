@@ -3,5 +3,10 @@ name = "miau"
 version = "0.1.0"
 authors = ["Alex Iadicicco <alex@ajitek.net>"]
 
+[dependencies]
+log = "*"
+mio = "*"
+toml = "*"
+
 [features]
 unstable = []  # for travis-cargo
