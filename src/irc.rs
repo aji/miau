@@ -29,9 +29,9 @@ pub enum MessageSource<'a> {
     Server(&'a [u8]),
 }
 
-impl<'a> From<&'a str> for IrcString {
-    fn from(string: &'a str) -> Self {
-        IrcString { vec: string.to_owned().into_bytes() }
+impl From<Vec<u8>> for IrcString {
+    fn from(vec: Vec<u8>) -> Self {
+        IrcString { vec: vec }
     }
 }
 
@@ -311,5 +311,15 @@ fn ircstring_eq() {
     assert_eq!(
         IrcString::from(b"The quick brown fox jumps over the lazy dog."),
         IrcString::from(b"thE QuicK bRoWN foX jUmps oVer tHE lazy DoG.")
+    );
+    let uppercase: Vec<u8> = (b'A'..b'Z'+1).iter().collect();
+    let lowercase: Vec<u8> = (b'a'..b'z'+1).iter().collect();
+    assert_eq!(IrcString::from(uppercase), IrcString::from(lowercase));
+    // This one'll make sure we don't ever manage to break reflexive equality
+    // for bytes in an IrcString.
+    let possible_bytes: Vec<u8> = (0x0..0x100).iter().collect();
+    assert_eq!(
+        IrcString::from(possible_bytes.clone()),
+        IrcString::from(possible_bytes)
     );
 }
