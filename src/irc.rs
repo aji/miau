@@ -193,8 +193,8 @@ impl<'a> fmt::Debug for MessageSource<'a> {
 /// Determines whether two bytestrings are equal, using RFC 1459 casefolding.
 ///
 /// RFC 1459 didn't consider any letters besides the ones in 7-bit ASCII,
-/// and it declared that the four characters `"{}|-"` should be considered
-/// the lowercase equivalents of the four characters `r"[]\^"`. This function
+/// and it declared that the three characters `"{}|"` should be considered
+/// the lowercase equivalents of the three characters `r"[]\"`. This function
 /// uses those semantics.
 pub fn eq_icase(left: &[u8], right: &[u8]) -> bool {
     if left.len() != right.len() {
@@ -208,9 +208,9 @@ pub fn eq_icase(left: &[u8], right: &[u8]) -> bool {
         }
         // The codepoints for each of the uppercase letters we need to consider
         // are equal to the bitwise OR of the codepoint of the corresponding
-        // uppercase letter, and 0x20. This is also true of three of the
-        // pairs of symbols that we need to consider. This excerpt from
-        // the Unicode codepage may help to visualize this:
+        // uppercase letter, and 0x20. This is also true of the pairs of symbols
+        // that we need to consider. This excerpt from the Unicode codepage
+        // may help to visualize this:
 
         // U+  _0 _1 _2 _3 _4 _5 _6 _7 _8 _9 _A _B _C _D _E _F
         // 
@@ -221,11 +221,6 @@ pub fn eq_icase(left: &[u8], right: &[u8]) -> bool {
         if left_byte ^ right_byte == b'A' ^ b'a' && (
           (b'A' <= left_byte && left_byte <= b']') ||
           (b'a' <= left_byte && left_byte <= b'}')) {
-            continue;
-        }
-        // The final pair of symbols we'll just check for explicitly.
-        if (left_byte, right_byte) == (b'-' as u8, b'^' as u8) ||
-          (left_byte, right_byte) == (b'^' as u8, b'-' as u8) {
             continue;
         }
         return false;
@@ -297,7 +292,7 @@ fn message_parse_with_source() {
 
 #[test]
 fn eq_icase_test() {
-    assert!(self::eq_icase(b"[Mi^au]\\", b"{mI-AU}|"));
+    assert!(self::eq_icase(b"[Miau]\\", b"{mIAU}|"));
     assert!(self::eq_icase(b"The quick brown fox jumps over the lazy dog.",
                            b"thE QuicK bRoWN foX jUmps oVer tHE lazy DoG."));
 }
