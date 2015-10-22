@@ -35,6 +35,12 @@ impl From<Vec<u8>> for IrcString {
     }
 }
 
+impl<'a> From<&'a [u8]> for IrcString {
+    fn from(bytestr: &'a [u8]) -> Self {
+        bytestr.into()
+    }
+}
+
 /// Determines whether two bytestrings are equal, using RFC 1459 casefolding.
 ///
 /// RFC 1459 didn't consider any letters besides the ones in 7-bit ASCII,
@@ -312,12 +318,12 @@ fn ircstring_eq() {
         IrcString::from(b"The quick brown fox jumps over the lazy dog."),
         IrcString::from(b"thE QuicK bRoWN foX jUmps oVer tHE lazy DoG.")
     );
-    let uppercase: Vec<u8> = (b'A'..b'Z'+1).iter().collect();
-    let lowercase: Vec<u8> = (b'a'..b'z'+1).iter().collect();
+    let uppercase: Vec<u8> = (b'A'..b'Z'+1).collect();
+    let lowercase: Vec<u8> = (b'a'..b'z'+1).collect();
     assert_eq!(IrcString::from(uppercase), IrcString::from(lowercase));
     // This one'll make sure we don't ever manage to break reflexive equality
     // for bytes in an IrcString.
-    let possible_bytes: Vec<u8> = (0x0..0x100).iter().collect();
+    let possible_bytes: Vec<u8> = (0x0..0x100).collect();
     assert_eq!(
         IrcString::from(possible_bytes.clone()),
         IrcString::from(possible_bytes)
