@@ -190,6 +190,49 @@ impl<'a> fmt::Debug for MessageSource<'a> {
     }
 }
 
+/// Determines whether two bytestrings are equal, using RFC 1459 casefolding.
+///
+/// RFC 1459 didn't consider any letters besides the ones in 7-bit ASCII,
+/// and it declared that the four characters `"{}|-"` should be considered
+/// the lowercase equivalents of the four characters `r"[]\^"`. This function
+/// uses those semantics.
+pub fn eq_icase(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    for (left_byte, right_byte) in left.iter().zip(right) {
+        // Avoid having to insert dereferencing asterisks /everywhere/ later.
+        let (left_byte, right_byte) = (*left_byte, *right_byte);
+        if left_byte == right_byte {
+            continue;
+        }
+        // The codepoints for each of the uppercase letters we need to consider
+        // are equal to the bitwise OR of the codepoint of the corresponding
+        // uppercase letter, and 0x20. This is also true of three of the
+        // pairs of symbols that we need to consider. This excerpt from
+        // the Unicode codepage may help to visualize this:
+
+        // U+  _0 _1 _2 _3 _4 _5 _6 _7 _8 _9 _A _B _C _D _E _F
+        // 
+        // 4_   @  A  B  C  D  E  F  G  H  I  J  K  L  M  N  O
+        // 5_   P  Q  R  S  T  U  V  W  X  Y  Z  [  \  ]  ^  _
+        // 6_   `  a  b  c  d  e  f  g  h  i  j  k  l  m  n  o
+        // 7_   p  q  r  s  t  u  v  w  x  y  z  {  |  }  ~   
+        if left_byte ^ right_byte == b'A' ^ b'a' && (
+          (b'A' <= left_byte && left_byte <= b']') ||
+          (b'a' <= left_byte && left_byte <= b'}')) {
+            continue;
+        }
+        // The final pair of symbols we'll just check for explicitly.
+        if (left_byte, right_byte) == (b'-' as u8, b'^' as u8) ||
+          (left_byte, right_byte) == (b'^' as u8, b'-' as u8) {
+            continue;
+        }
+        return false;
+    }
+    true
+}
+
 #[test]
 fn message_source_parse_server() {
     use self::MessageSource::*;
@@ -250,4 +293,11 @@ fn message_parse_with_source() {
         verb: b"PING",
         args: vec![b"this", b"has spaces"],
     }, Message::parse(b":h.ost PING this :has spaces").unwrap());
+}
+
+#[test]
+fn eq_icase_test() {
+    assert!(self::eq_icase(b"[Mi^au]\\", b"{mI-AU}|"));
+    assert!(self::eq_icase(b"The quick brown fox jumps over the lazy dog.",
+                           b"thE QuicK bRoWN foX jUmps oVer tHE lazy DoG."));
 }
