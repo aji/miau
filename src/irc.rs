@@ -38,7 +38,7 @@ impl From<Vec<u8>> for IrcString {
 
 impl<'a> From<&'a [u8]> for IrcString {
     fn from(bytestr: &'a [u8]) -> Self {
-        bytestr.into()
+        IrcString::from(bytestr.to_vec())
     }
 }
 
@@ -327,7 +327,7 @@ fn ircstring_eq() {
     assert_eq!(IrcString::from(uppercase), IrcString::from(lowercase));
     // This one'll make sure we don't ever manage to break reflexive equality
     // for bytes in an IrcString.
-    let possible_bytes: Vec<u8> = (0x0..0x100).collect();
+    let possible_bytes: Vec<u8> = (0..0x100u32).map(|x| x as u8).collect();
     assert_eq!(
         IrcString::from(possible_bytes.clone()),
         IrcString::from(possible_bytes)
