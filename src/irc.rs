@@ -3,6 +3,7 @@
 use std::fmt;
 
 /// Wrapper for owned bytestrings, with IRC semantics for casefolding et al.
+#[derive(Debug)]
 pub struct IrcString {
     vec: Vec<u8>,
 }
@@ -313,10 +314,13 @@ fn message_parse_with_source() {
 
 #[test]
 fn ircstring_eq() {
-    assert_eq!(IrcString::from(b"[Miau]\\"), IrcString::from(b"{mIAU}|"));
     assert_eq!(
-        IrcString::from(b"The quick brown fox jumps over the lazy dog."),
-        IrcString::from(b"thE QuicK bRoWN foX jUmps oVer tHE lazy DoG.")
+        IrcString::from(b"[Miau]\\" as &[u8]),
+        IrcString::from(b"{mIAU}|" as &[u8])
+    );
+    assert_eq!(
+        IrcString::from(b"The quick brown fox jumps over the lazy dog." as &[u8]),
+        IrcString::from(b"thE QuicK bRoWN foX jUmps oVer tHE lazy DoG." as &[u8])
     );
     let uppercase: Vec<u8> = (b'A'..b'Z'+1).collect();
     let lowercase: Vec<u8> = (b'a'..b'z'+1).collect();
