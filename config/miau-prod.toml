@@ -2,7 +2,6 @@
 level = "info"
 
 [bot]
-start_delay = 6
 
 [irc]
 nick = "miau"

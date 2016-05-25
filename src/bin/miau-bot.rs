@@ -33,7 +33,7 @@ fn main() {
         },
     };
 
-    let wait = env.conf_integer("bot.start_delay").unwrap_or(30) as u64;
+    let wait = env.conf_integer_or("bot.start_delay", 30) as u64;
     info!("sleeping for {} seconds before attempting connection", wait);
     thread::sleep(time::Duration::new(wait, 0));
 

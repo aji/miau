@@ -3,5 +3,8 @@
 [log]
 level = "debug"
 
+[bot]
+start_delay = 0
+
 [irc]
 host = "127.0.0.1"

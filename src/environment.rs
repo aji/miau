@@ -59,6 +59,12 @@ impl Env {
         self.conf(path).and_then(|v| v.as_integer())
     }
 
+    /// Fetches the given configuration value as an integer, or the default value,
+    /// if it doesn't exist, and prints a warning.
+    pub fn conf_integer_or<'a>(&'a self, path: &'a str, or: i64) -> i64 {
+        self.conf_integer(path).unwrap_or_else(|| { warn!("{} defaulting to {}", path, or); or })
+    }
+
     /// Fetches the given configuration value as a floating point value, if it
     /// exists.
     pub fn conf_float<'a>(&'a self, path: &'a str) -> Option<f64> {
