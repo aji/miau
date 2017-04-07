@@ -105,6 +105,14 @@ impl<S: AsyncRead + AsyncWrite + Sized> Bot<S> {
                 }
             },
 
+            "PRIVMSG" if m.args[0].starts_with("#") => {
+                if m.args[1] == format!("{}: version", self.canonical_nick()) {
+                    self.send(format!("PRIVMSG {} :i am {} v{}", m.args[0],
+                        env!("CARGO_PKG_NAME"),
+                        env!("CARGO_PKG_VERSION")));
+                }
+            },
+
             "PING" => self.send(format!("PONG :{}", m.args[0])),
 
             _ => {}
