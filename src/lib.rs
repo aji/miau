@@ -4,11 +4,13 @@
 
 #[macro_use]
 extern crate log;
-extern crate mio;
 extern crate toml;
+extern crate bytes;
+extern crate futures;
+extern crate tokio_core;
+extern crate tokio_io;
 
-pub mod core;
+pub mod bot;
 pub mod environment;
-pub mod event;
 pub mod irc;
 pub mod logging;

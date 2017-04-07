@@ -24,6 +24,7 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
+use std::rc::Rc;
 use toml;
 
 const CONFIG_ENV:  &'static str = "MIAU_CONFIG";
@@ -32,21 +33,23 @@ const OVERLAY_ENV: &'static str = "MIAU_OVERLAY";
 const DEFAULT_CONFIG:  &'static str = "config/miau-prod.toml";
 const DEFAULT_OVERLAY: &'static str = "config/miau-dev.toml";
 
+pub type Env = Rc<EnvInner>;
+
 /// The main `struct` for accessing the bot's environment, including
 /// configuration loaded from files, the command line, and environment
 /// variables. Any static user configuration should be retrieved from an
 /// instance of this struct.
-pub struct Env {
+pub struct EnvInner {
     config:   toml::Value,
     overlay:  toml::Value,
 }
 
-impl Env {
+impl EnvInner {
     /// Fetches the given configuration value, if it exists. Refer to the
-    /// `toml::Value::lookup` documentation for the meaning of the "path"
+    /// `lookup` documentation for the meaning of the "path"
     /// argument.
     pub fn conf<'a>(&'a self, path: &'a str) -> Option<&toml::Value> {
-        self.overlay.lookup(path).or_else(|| self.config.lookup(path))
+        lookup(&self.overlay, path).or_else(|| lookup(&self.config, path))
     }
 
     /// Fetches the given configuration value as a string slice, if it exists.
@@ -78,20 +81,33 @@ impl Env {
 
     /// Fetches the given configuration value as an array of TOML values, if it
     /// exists.
-    pub fn conf_slice<'a>(&'a self, path: &'a str) -> Option<&[toml::Value]> {
-        self.conf(path).and_then(|v| v.as_slice())
+    pub fn conf_array<'a>(&'a self, path: &'a str) -> Option<&Vec<toml::Value>> {
+        self.conf(path).and_then(|v| v.as_array())
     }
 
     /// Fetches the given configuration value as a TOML table, if it exists.
-    pub fn conf_table<'a>(&'a self, path: &'a str) -> Option<&toml::Table> {
+    pub fn conf_table<'a>(&'a self, path: &'a str) -> Option<&toml::value::Table> {
         self.conf(path).and_then(|v| v.as_table())
+    }
+}
+
+/// Look up a value. Splits on periods, descends that way.
+pub fn lookup<'t>(x: &'t toml::Value, path: &str) -> Option<&'t toml::Value> {
+    path.split('.').fold(Some(x), |x, p| x.and_then(|x| lookup_one(x, p)))
+}
+
+fn lookup_one<'t>(x: &'t toml::Value, item: &str) -> Option<&'t toml::Value> {
+    if x.is_array() {
+        item.parse::<usize>().ok().and_then(|i| x.get(i))
+    } else {
+        x.get(item)
     }
 }
 
 /// Used to signal that there was an error loading the environment.
 pub enum Error {
     IO(io::Error),
-    TOML,
+    TOML(String, toml::de::Error),
 }
 
 impl From<io::Error> for Error {
@@ -101,30 +117,8 @@ impl From<io::Error> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::IO(ref err)  => write!(f, "{}", err),
-            Error::TOML         => write!(f, "TOML parse error"),
-        }
-    }
-}
-
-fn show_parse_errors(path: &str, data: &str, parser: &toml::Parser) {
-    let ln = {
-        let mut lines = Vec::new();
-        let mut line = 1;
-        for b in data.bytes() {
-            lines.push(line);
-            if b == b'\n' {
-                line += 1;
-            }
-        }
-        lines
-    };
-
-    for err in parser.errors.iter() {
-        if ln[err.lo] == ln[err.hi-1] {
-            println!("{}:{}: {}", path, ln[err.lo], err.desc);
-        } else {
-            println!("{}:{}-{}: {}", path, ln[err.lo], ln[err.hi], err.desc);
+            Error::IO(ref err) => write!(f, "{}", err),
+            Error::TOML(ref path, ref err) => write!(f, "{}: {}", path, err),
         }
     }
 }
@@ -135,15 +129,7 @@ fn read_toml(path: String) -> Result<toml::Value, Error> {
     let mut data = String::new();
     try!(file.read_to_string(&mut data));
 
-    let mut parser = toml::Parser::new(&data[..]);
-
-    match parser.parse() {
-        Some(table) => Ok(toml::Value::Table(table)),
-        None => {
-            show_parse_errors(&path[..], &data[..], &parser);
-            Err(Error::TOML)
-        }
-    }
+    toml::from_str::<toml::Value>(&data[..]).map_err(|e| Error::TOML(path, e))
 }
 
 /// Loads the bot's environment.
@@ -166,8 +152,10 @@ pub fn load() -> Result<Env, Error> {
         }
     };
 
-    Ok(Env {
+    let env = EnvInner {
         config:  try!(read_toml(config)),
         overlay: try!(read_toml(overlay)),
-    })
+    };
+
+    Ok(Rc::new(env))
 }

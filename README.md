@@ -47,13 +47,13 @@ want to test a different base configuration file, `miau` looks in `MIAU_CONFIG`
 for the path. This defaults to `config/miau-prod.toml`, but no warning is
 printed when using the default.
 
-It's recommended to install `multirust`, `travis-cargo`, and the Heroku
+It's recommended to install `rustup`, `travis-cargo`, and the Heroku
 Toolbelt for the most accurate testing setup. Thankfully, this is usually only
 necessary when testing changes to the Travis and Heroku integration, but it can
 be useful to verify that a set of changes will correctly build and run in
 production. To build:
 
-    $ multirust default nightly
+    $ rustup default nightly
     $ travis-cargo
 
 To run,

@@ -4,7 +4,7 @@ extern crate log;
 
 use environment::Env;
 
-static EXTERNAL_LOG_LEVEL: log::LogLevel = log::LogLevel::Debug;
+static EXTERNAL_LOG_LEVEL: log::LogLevel = log::LogLevel::Info;
 static DEFAULT_LOG_LEVEL: log::LogLevelFilter = log::LogLevelFilter::Debug;
 
 struct DumbLogger;
