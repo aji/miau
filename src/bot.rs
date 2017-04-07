@@ -77,7 +77,7 @@ impl<S: AsyncRead + AsyncWrite + Sized> Bot<S> {
 
     fn send_registration(&mut self) {
         let nick_line = format!("NICK {}", self.canonical_nick());
-        let user_line = "USER miau * * :https://github.com/aji/miau".to_string();
+        let user_line = format!("USER miau * * :{}", env!("CARGO_PKG_HOMEPAGE"));
         self.send(nick_line);
         self.send(user_line);
     }

@@ -2,6 +2,9 @@
 name = "miau"
 version = "0.1.0"
 authors = ["Alex Iadicicco <alex@ajitek.net>"]
+documentation = "http://aji.github.io/miau"
+homepage = "https://github.com/aji/miau"
+repository = "https://github.com/aji/miau"
 
 [dependencies]
 log = "0.3"
