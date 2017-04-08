@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["MessageSource","The parsed source of an IRC message."]],"struct":[["Message","The parsed form of an IRC message."]]});

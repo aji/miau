@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["init","Configures the logging system with the configuration for the current environment."]]});
