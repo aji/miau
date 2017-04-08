@@ -11,6 +11,8 @@ extern crate tokio_core;
 extern crate tokio_io;
 
 pub mod bot;
+pub mod commands;
 pub mod environment;
 pub mod irc;
 pub mod logging;
+pub mod network;

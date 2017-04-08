@@ -168,6 +168,14 @@ impl<'a> MessageSource<'a> {
             None => User(spec, None, None)
         }
     }
+
+    pub fn short_name(&self) -> &'a str {
+        match *self {
+            MessageSource::Missing => "(nil)",
+            MessageSource::User(ref n, _, _) => n,
+            MessageSource::Server(ref s) => s,
+        }
+    }
 }
 
 impl<'a> fmt::Debug for MessageSource<'a> {

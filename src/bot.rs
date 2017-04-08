@@ -1,8 +1,6 @@
 //! The main bot entry point.
 
-// This file is terrible and extremely in flux. Please don't rely on anything
-// in it remaining the same in the short future!
-
+use std::collections::VecDeque;
 use std::io;
 use std::mem;
 use std::net::ToSocketAddrs;
@@ -19,6 +17,7 @@ use futures::Async;
 use futures::Stream;
 use futures::Sink;
 use futures::AsyncSink;
+use futures::task;
 
 use tokio_core::reactor::Core;
 use tokio_core::reactor::Handle;
@@ -30,93 +29,46 @@ use tokio_io::codec::Decoder;
 use tokio_io::codec::Encoder;
 use tokio_io::codec::Framed;
 
-use toml;
-
 use environment::Env;
 use irc;
+use network;
 
 pub struct Bot<S> {
-    env: Env,
+    _env: Env,
     _handle: Handle,
-    sock: Framed<S, IrcCodec>,
-    sock_state: SockState,
+    sock: Sock<S>,
+    bot_state: BotState,
+    net: network::Network,
 }
 
-enum SockState {
-    Empty,
+enum BotState {
+    Invalid,
+    Start,
     Receiving,
-    Sending(Vec<String>),
-    PollComplete,
     Finish,
 }
 
 impl<S: AsyncRead + AsyncWrite + Sized> Bot<S> {
-    fn new(env: Env, handle: Handle, sock: S) -> Bot<S> {
-        let mut bot = Bot {
-            env: env,
+    fn new(env: Env, handle: Handle, raw_sock: S) -> Bot<S> {
+        let mut sock = Sock::new(raw_sock);
+        let net = network::Network::register(env.clone(), &mut sock);
+
+        Bot {
+            _env: env,
             _handle: handle,
-            sock: sock.framed(IrcCodec),
-            sock_state: SockState::Receiving,
-        };
-        bot.send_registration();
-        bot
-    }
-
-    fn canonical_nick(&self) -> &str {
-        self.env.conf_str("irc.nick").unwrap_or("miau")
-    }
-
-    fn send(&mut self, line: String) {
-        let mut lines = match mem::replace(&mut self.sock_state, SockState::Empty) {
-            SockState::Sending(lines) => lines,
-            _ => Vec::with_capacity(1),
-        };
-        lines.push(line);
-        self.sock_state = SockState::Sending(lines);
-    }
-
-    fn send_registration(&mut self) {
-        let nick_line = format!("NICK {}", self.canonical_nick());
-        let user_line = format!("USER miau * * :{}", env!("CARGO_PKG_HOMEPAGE"));
-        self.send(nick_line);
-        self.send(user_line);
-    }
-
-    fn handle_line(&mut self, line: String) {
-        let m = match irc::Message::parse(&line[..]) {
-            Ok(m) => m,
-            Err(e) => { error!("bad line: {}", e); return; },
-        };
-
-        match m.verb {
-            "001" => {
-                // TODO: this is EXTREMELY UGLY, please fix it.
-                let dfl = vec![toml::value::Value::String("#miau-dev".to_owned())];
-                let chans = self.env.conf_array("irc.channels").unwrap_or(&dfl).to_owned();
-                for chan in chans.iter() {
-                    let c = match chan {
-                        &toml::value::Value::String(ref c) => c,
-                        _ => {
-                            warn!("{} is not a string! skipping", chan);
-                            continue;
-                        }
-                    };
-                    self.send(format!("JOIN {}", c));
-                }
-            },
-
-            "PRIVMSG" if m.args[0].starts_with("#") => {
-                if m.args[1] == format!("{}: version", self.canonical_nick()) {
-                    self.send(format!("PRIVMSG {} :i am {} v{}", m.args[0],
-                        env!("CARGO_PKG_NAME"),
-                        env!("CARGO_PKG_VERSION")));
-                }
-            },
-
-            "PING" => self.send(format!("PONG :{}", m.args[0])),
-
-            _ => {}
+            sock: sock,
+            bot_state: BotState::Start,
+            net: net,
         }
+    }
+}
+
+impl<S> Bot<S> {
+    fn handle_line(&mut self, line: String) {
+        match irc::Message::parse(&line[..]) {
+            Ok(m) => self.net.handle_message(&mut self.sock, m),
+            Err(e) => error!("could not parse IRC message: {}", e),
+        };
     }
 }
 
@@ -126,26 +78,28 @@ impl<S: AsyncRead + AsyncWrite> Future for Bot<S> {
 
     fn poll(&mut self) -> Poll<(), io::Error> {
         loop {
-            match mem::replace(&mut self.sock_state, SockState::Empty) {
-                SockState::Empty => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        "cannot poll Bot in SockState::Empty"
-                    ))
+            match mem::replace(&mut self.bot_state, BotState::Invalid) {
+                BotState::Invalid => {
+                    warn!("bot ended up in invalid state!");
+                    self.bot_state = BotState::Start;
                 },
 
-                SockState::Receiving => {
+                BotState::Start => {
+                    self.bot_state = BotState::Receiving;
+                },
+
+                BotState::Receiving => {
                     match self.sock.poll() {
                         Ok(Async::Ready(Some(s))) => {
-                            self.sock_state = SockState::Receiving;
+                            self.bot_state = BotState::Start;
                             self.handle_line(s);
                         },
                         Ok(Async::Ready(None)) => {
-                            debug!("EOF!");
-                            self.sock_state = SockState::Finish;
+                            info!("end of input. finishing");
+                            self.bot_state = BotState::Finish;
                         },
                         Ok(Async::NotReady) => {
-                            self.sock_state = SockState::Receiving;
+                            self.bot_state = BotState::Start;
                             return Ok(Async::NotReady);
                         },
                         Err(e) => {
@@ -154,32 +108,120 @@ impl<S: AsyncRead + AsyncWrite> Future for Bot<S> {
                     }
                 },
 
-                SockState::Sending(ref lines) if lines.len() == 0 => {
-                    self.sock_state = SockState::PollComplete;
+                BotState::Finish => {
+                    self.bot_state = BotState::Finish;
+                    return Ok(Async::Ready(()));
+                },
+            }
+        }
+    }
+}
+
+struct Sock<S> {
+    sock: Framed<S, IrcCodec>,
+    sock_state: SockState,
+    out_buf: VecDeque<String>,
+    parked: Option<task::Task>,
+}
+
+enum SockState {
+    Invalid,
+    Start,
+    Receiving,
+    Sending,
+    PollComplete,
+    Finish,
+}
+
+impl<S: AsyncRead + AsyncWrite + Sized> Sock<S> {
+    fn new(sock: S) -> Sock<S> {
+        Sock {
+            sock: sock.framed(IrcCodec),
+            sock_state: SockState::Start,
+            out_buf: VecDeque::new(),
+            parked: None,
+        }
+    }
+}
+
+impl<S> Sock<S> {
+    fn send(&mut self, line: String) {
+        self.out_buf.push_back(line);
+        self.parked.take().map(|t| t.unpark());
+    }
+}
+
+impl<S> network::Output for Sock<S> {
+    fn send(&mut self, line: String) {
+        Sock::send(self, line);
+    }
+}
+
+impl<S: AsyncRead + AsyncWrite> Stream for Sock<S> {
+    type Item = String;
+    type Error = io::Error;
+
+    fn poll(&mut self) -> Poll<Option<String>, io::Error> {
+        loop {
+            match mem::replace(&mut self.sock_state, SockState::Invalid) {
+                SockState::Invalid => {
+                    warn!("socket ended up in invalid state!");
+                    self.sock_state = SockState::Start;
                 },
 
-                SockState::Sending(mut lines) => {
-                    let line = lines.remove(0); // XXX: horribly inefficient
+                SockState::Start => {
+                    if self.out_buf.is_empty() {
+                        self.sock_state = SockState::Receiving;
+                    } else {
+                        self.sock_state = SockState::Sending;
+                    }
+                },
 
-                    match self.sock.start_send(line) {
-                        Ok(AsyncSink::Ready) => {
-                            self.sock_state = SockState::Sending(lines);
+                SockState::Receiving => {
+                    match self.sock.poll() {
+                        Ok(Async::Ready(None)) => {
+                            self.sock_state = SockState::Finish;
                         },
-                        Ok(AsyncSink::NotReady(line)) => {
-                            lines.insert(0, line); // XXX: also horribly inefficient
-                            self.sock_state = SockState::Sending(lines);
+                        Ok(Async::Ready(Some(s))) => {
+                            self.sock_state = SockState::Start;
+                            return Ok(Async::Ready(Some(s)));
+                        },
+                        Ok(Async::NotReady) => {
+                            self.sock_state = SockState::Start;
+                            self.parked = Some(task::park());
                             return Ok(Async::NotReady);
                         },
                         Err(e) => {
                             return Err(e);
                         },
+                    }
+                },
+
+                SockState::Sending => {
+                    if let Some(line) = self.out_buf.pop_front() {
+                        match self.sock.start_send(line) {
+                            Ok(AsyncSink::Ready) => {
+                                self.sock_state = SockState::Sending;
+                            },
+                            Ok(AsyncSink::NotReady(line)) => {
+                                self.out_buf.push_front(line);
+                                self.sock_state = SockState::Sending;
+                                self.parked = Some(task::park());
+                                return Ok(Async::NotReady);
+                            },
+                            Err(e) => {
+                                return Err(e);
+                            },
+                        }
+                    } else {
+                        self.sock_state = SockState::PollComplete;
                     }
                 },
 
                 SockState::PollComplete => {
                     match self.sock.poll_complete() {
                         Ok(Async::Ready(())) => {
-                            self.sock_state = SockState::Receiving;
+                            self.sock_state = SockState::Start;
                         },
                         Ok(Async::NotReady) => {
                             self.sock_state = SockState::PollComplete;
@@ -192,7 +234,8 @@ impl<S: AsyncRead + AsyncWrite> Future for Bot<S> {
                 },
 
                 SockState::Finish => {
-                    return Ok(Async::Ready(()));
+                    self.sock_state = SockState::Finish;
+                    return Ok(Async::Ready(None));
                 },
             }
         }
@@ -227,7 +270,10 @@ impl Decoder for IrcCodec {
                         debug!(" --> {}", s);
                         Ok(Some(s.to_string()))
                     },
-                    Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
+                    Err(e) => {
+                        warn!("could not parse bytes as utf8: {:?}: {}", line, e);
+                        Ok(None)
+                    }
                 };
             }
         }
